@@ -7,12 +7,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// TODO
 const (
 	namespace = "atome"
 )
 
-// Exporter is the struct holding all metrics exposed by the exporter
+// Exporter collects Atome statistics from the given atome client
 type Exporter struct {
 	logger      *logrus.Logger
 	atome       *atome.Client
@@ -50,7 +49,7 @@ func New(logger *logrus.Logger, atome *atome.Client) *Exporter {
 	}
 }
 
-// Describe is ..
+// Describe describes all the metrics exported by this exporter
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.up
 	ch <- e.consumption
@@ -58,7 +57,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.co2impact
 }
 
-// Collect is ..
+// Collect fetches the stats from the atome client
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.logger.Infoln("Collecting metrics")
 

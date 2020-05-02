@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -34,6 +35,7 @@ func main() {
 
 	http.Handle("/metrics", promhttp.Handler())
 
-	logger.Infof("Server running an listening :8080") // TODO: make it configurable
-	http.ListenAndServe("0.0.0.0:8080", nil)
+	listen := fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort)
+	logger.Infof("Server running an listening: %s", listen)
+	http.ListenAndServe(listen, nil)
 }

@@ -12,7 +12,9 @@ type Atome struct {
 
 // Config is the struct holding all app's config
 type Config struct {
-	Atome Atome
+	ListenAddr string `default:"localhost"`
+	ListenPort int    `default:"8080"`
+	Atome      Atome
 }
 
 // LoadFromEnv returns the config populated from environement

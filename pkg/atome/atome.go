@@ -42,8 +42,7 @@ func NewClient(logger *logrus.Logger, username, password string, storage *storag
 	}
 }
 
-// Authenticate is ..
-func (c *Client) Authenticate() error {
+func (c *Client) authenticate() error {
 	body, err := json.Marshal(authenticateRequest{
 		Email:         c.username,
 		PlainPassword: c.password,
@@ -111,7 +110,7 @@ func (c *Client) Authenticate() error {
 	return nil
 }
 
-// RetriveDayConsumption is ...
+// RetriveDayConsumption returns the current consumption
 func (c *Client) RetriveDayConsumption() (*Consumption, error) {
 	var sessionCookieValue string
 	err := c.storage.Get(sessionCookieName, &sessionCookieValue)
@@ -156,7 +155,7 @@ func (c *Client) RetriveDayConsumption() (*Consumption, error) {
 	fmt.Printf("%q \n", dump)
 
 	if resp.StatusCode == 403 {
-		c.Authenticate()
+		c.authenticate()
 		return c.RetriveDayConsumption()
 	}
 

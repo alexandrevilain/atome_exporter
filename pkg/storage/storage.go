@@ -8,11 +8,13 @@ import (
 	"errors"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	bolt "go.etcd.io/bbolt"
 )
 
 // Storage represents a key value store
 type Storage struct {
+	logger *logrus.Logger
 	db     *bolt.DB
 	bucket []byte
 }
@@ -28,7 +30,7 @@ var (
 )
 
 // New creates a new instance of the key-value store
-func New(path string, bucket string) (*Storage, error) {
+func New(logger *logrus.Logger, path string, bucket string) (*Storage, error) {
 	bucketName := []byte(bucket)
 	opts := &bolt.Options{
 		Timeout: 50 * time.Millisecond,
@@ -44,7 +46,11 @@ func New(path string, bucket string) (*Storage, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Storage{db: db, bucket: bucketName}, nil
+	return &Storage{
+		logger: logger,
+		db:     db,
+		bucket: bucketName,
+	}, nil
 }
 
 // Put an entry into the store

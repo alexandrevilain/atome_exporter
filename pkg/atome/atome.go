@@ -7,14 +7,15 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/http/httputil"
 
 	"github.com/alexandrevilain/atome_exporter/pkg/storage"
+	"github.com/sirupsen/logrus"
 )
 
 const (
 	baseURL           = "https://esoftlink.esoftthings.com"
 	sessionCookieName = "PHPSESSID"
-	databaseFilename  = "atome_exporter.db"
 
 	storageCookieKey         = "cookie"
 	storageUserIDKey         = "user_id"
@@ -23,6 +24,7 @@ const (
 
 // A Client is an Atome client API
 type Client struct {
+	logger   *logrus.Logger
 	username string
 	password string
 	client   *http.Client
@@ -30,18 +32,14 @@ type Client struct {
 }
 
 // NewClient creates a new instance of an atome API client
-func NewClient(username, password string) (*Client, error) {
-	storage, err := storage.New(databaseFilename, "atome")
-	if err != nil {
-		return nil, err
-	}
-
+func NewClient(logger *logrus.Logger, username, password string, storage *storage.Storage) *Client {
 	return &Client{
+		logger:   logger,
 		username: username,
 		password: password,
 		client:   &http.Client{},
 		storage:  storage,
-	}, nil
+	}
 }
 
 // Authenticate is ..
@@ -67,6 +65,13 @@ func (c *Client) Authenticate() error {
 
 	defer resp.Body.Close()
 
+	dump, err := httputil.DumpResponse(resp, true)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("%q \n", dump)
+
 	var sessionCookie *http.Cookie
 	for _, cookie := range resp.Cookies() {
 		if cookie.Name == sessionCookieName {
@@ -78,7 +83,7 @@ func (c *Client) Authenticate() error {
 		return errors.New("Authentication cookie not found")
 	}
 
-	log.Printf("Cookie expires at: %s", sessionCookie.Expires)
+	c.logger.Printf("Cookie expires at: %s", sessionCookie.Expires)
 
 	var response authenticateResponse
 	err = json.NewDecoder(resp.Body).Decode(&response)
@@ -101,7 +106,7 @@ func (c *Client) Authenticate() error {
 		return err
 	}
 
-	log.Printf("Authenticated as %s %s", response.Firstname, response.Lastname)
+	c.logger.Printf("Authenticated as %s %s", response.Firstname, response.Lastname)
 
 	return nil
 }
@@ -127,6 +132,9 @@ func (c *Client) RetriveDayConsumption() (*Consumption, error) {
 	}
 
 	url := fmt.Sprintf("%s/api/subscription/%d/%s/consumption.json?period=sod", baseURL, userID, subscriptionID)
+
+	c.logger.Printf("Making request to: %s \n", url)
+
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -139,6 +147,22 @@ func (c *Client) RetriveDayConsumption() (*Consumption, error) {
 	}
 
 	defer resp.Body.Close()
+
+	dump, err := httputil.DumpResponse(resp, true)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("%q \n", dump)
+
+	if resp.StatusCode == 403 {
+		c.Authenticate()
+		return c.RetriveDayConsumption()
+	}
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("can't get data, got status: %d", resp.StatusCode)
+	}
 
 	var response lastConsumptionResponse
 	err = json.NewDecoder(resp.Body).Decode(&response)

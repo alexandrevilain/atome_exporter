@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 
-	"github.com/alexandrevilain/atome_exporter/pkg/storage"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,25 +23,30 @@ const (
 
 // A Client is an Atome client API
 type Client struct {
-	logger   *logrus.Logger
+	logger *logrus.Logger
+	client *http.Client
+	debug  bool
+
 	username string
 	password string
-	client   *http.Client
-	storage  *storage.Storage
+
+	cookie *http.Cookie
+	user   *authenticateResponse
 }
 
 // NewClient creates a new instance of an atome API client
-func NewClient(logger *logrus.Logger, username, password string, storage *storage.Storage) *Client {
+func NewClient(logger *logrus.Logger, username, password string, debug bool) *Client {
 	return &Client{
 		logger:   logger,
+		client:   &http.Client{},
+		debug:    debug,
 		username: username,
 		password: password,
-		client:   &http.Client{},
-		storage:  storage,
 	}
 }
 
-func (c *Client) authenticate() error {
+// Authenticate is ...
+func (c *Client) Authenticate() error {
 	body, err := json.Marshal(authenticateRequest{
 		Email:         c.username,
 		PlainPassword: c.password,
@@ -64,12 +68,14 @@ func (c *Client) authenticate() error {
 
 	defer resp.Body.Close()
 
-	dump, err := httputil.DumpResponse(resp, true)
-	if err != nil {
-		log.Fatal(err)
-	}
+	if c.debug {
+		dump, err := httputil.DumpResponse(resp, true)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	fmt.Printf("%q \n", dump)
+		c.logger.Debugf("%q \n", dump)
+	}
 
 	var sessionCookie *http.Cookie
 	for _, cookie := range resp.Cookies() {
@@ -83,6 +89,7 @@ func (c *Client) authenticate() error {
 	}
 
 	c.logger.Printf("Cookie expires at: %s", sessionCookie.Expires)
+	c.logger.Printf("Cookie retrieved value: %s", sessionCookie.Value)
 
 	var response authenticateResponse
 	err = json.NewDecoder(resp.Body).Decode(&response)
@@ -90,20 +97,8 @@ func (c *Client) authenticate() error {
 		return err
 	}
 
-	err = c.storage.Put(storageCookieKey, sessionCookie.Value)
-	if err != nil {
-		return err
-	}
-
-	err = c.storage.Put(storageUserIDKey, response.ID)
-	if err != nil {
-		return err
-	}
-
-	err = c.storage.Put(storageSubscriptionIDKey, response.Subscriptions[0].Reference)
-	if err != nil {
-		return err
-	}
+	c.cookie = sessionCookie
+	c.user = &response
 
 	c.logger.Printf("Authenticated as %s %s", response.Firstname, response.Lastname)
 
@@ -112,25 +107,8 @@ func (c *Client) authenticate() error {
 
 // RetriveDayConsumption returns the current consumption
 func (c *Client) RetriveDayConsumption() (*Consumption, error) {
-	var sessionCookieValue string
-	err := c.storage.Get(sessionCookieName, &sessionCookieValue)
-	if err != nil {
-		return nil, err
-	}
 
-	var userID int
-	err = c.storage.Get(storageUserIDKey, &userID)
-	if err != nil {
-		return nil, err
-	}
-
-	var subscriptionID string
-	err = c.storage.Get(storageSubscriptionIDKey, &subscriptionID)
-	if err != nil {
-		return nil, err
-	}
-
-	url := fmt.Sprintf("%s/api/subscription/%d/%s/consumption.json?period=sod", baseURL, userID, subscriptionID)
+	url := fmt.Sprintf("%s/api/subscription/%d/%s/consumption.json?period=sod", baseURL, c.user.ID, c.user.Subscriptions[0].Reference)
 
 	c.logger.Printf("Making request to: %s \n", url)
 
@@ -139,7 +117,7 @@ func (c *Client) RetriveDayConsumption() (*Consumption, error) {
 		return nil, err
 	}
 
-	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionCookieValue})
+	request.AddCookie(c.cookie)
 	resp, err := c.client.Do(request)
 	if err != nil {
 		return nil, err
@@ -147,15 +125,17 @@ func (c *Client) RetriveDayConsumption() (*Consumption, error) {
 
 	defer resp.Body.Close()
 
-	dump, err := httputil.DumpResponse(resp, true)
-	if err != nil {
-		log.Fatal(err)
+	if c.debug {
+		dump, err := httputil.DumpResponse(resp, true)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		c.logger.Debugf("%q \n", dump)
 	}
 
-	fmt.Printf("%q \n", dump)
-
 	if resp.StatusCode == 403 {
-		c.authenticate()
+		c.Authenticate()
 		return c.RetriveDayConsumption()
 	}
 

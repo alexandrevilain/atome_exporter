@@ -5,14 +5,13 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 
 	"github.com/alexandrevilain/atome_exporter/internal/config"
 	"github.com/alexandrevilain/atome_exporter/internal/exporter"
 	"github.com/alexandrevilain/atome_exporter/pkg/atome"
-	"github.com/alexandrevilain/atome_exporter/pkg/storage"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -23,12 +22,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	storage, err := storage.New(logger, "atome_exporter.db", "atome")
+	atome := atome.NewClient(logger, config.Atome.Username, config.Atome.Password, config.Atome.Debug)
+	err = atome.Authenticate()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	atome := atome.NewClient(logger, config.Atome.Username, config.Atome.Password, storage)
 	exporter := exporter.New(logger, atome)
 
 	prometheus.MustRegister(exporter)

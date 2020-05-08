@@ -61,14 +61,14 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.logger.Infoln("Collecting metrics")
 
-	up := 1
 	consumption, err := e.atome.RetriveDayConsumption()
 	if err != nil {
 		log.Error(err)
-		up = 0
+		ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0)
+		return
 	}
 
-	ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, float64(up))
+	ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 1)
 	ch <- prometheus.MustNewConstMetric(e.consumption, prometheus.GaugeValue, float64(consumption.Total))
 	ch <- prometheus.MustNewConstMetric(e.price, prometheus.GaugeValue, consumption.Price)
 	ch <- prometheus.MustNewConstMetric(e.co2impact, prometheus.GaugeValue, float64(consumption.Co2Impact))

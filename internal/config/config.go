@@ -8,6 +8,7 @@ import (
 type Atome struct {
 	Username string
 	Password string
+	Debug    bool `default:"true"`
 }
 
 // Config is the struct holding all app's config

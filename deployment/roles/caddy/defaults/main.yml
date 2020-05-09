@@ -1,0 +1,9 @@
+---
+caddy_version: 2.0.0
+caddy_binary_install_dir: '/usr/local/bin'
+caddy_config_use_api: false
+caddy_config_file_path: /etc/caddy
+caddy_config_file_name: Caddyfile
+caddy_config: |
+  :80
+  respond "Hello, world 2!"

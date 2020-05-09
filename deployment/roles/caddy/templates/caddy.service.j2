@@ -1,0 +1,21 @@
+{{ ansible_managed | comment }}
+
+[Unit]
+Description=Caddy
+Documentation=https://caddyserver.com/docs/
+After=network.target
+
+[Service]
+User=caddy
+Group=caddy
+ExecStart={{ caddy_binary_install_dir }}/caddy run --environ --config {{ caddy_config_file_path }}/{{ caddy_config_file_name }}
+ExecReload={{ caddy_binary_install_dir }}/caddy reload --config {{ caddy_config_file_path }}/{{ caddy_config_file_name }}
+TimeoutStopSec=5s
+LimitNOFILE=1048576
+LimitNPROC=512
+PrivateTmp=true
+ProtectSystem=full
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target

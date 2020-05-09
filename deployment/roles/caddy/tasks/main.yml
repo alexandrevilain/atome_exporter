@@ -1,3 +1,100 @@
 ---
-# TODO: create a great caddy2 role
+# This ansible role is largely inspired by ansible-prometheus by cloudalchemy
+# See: https://github.com/cloudalchemy/ansible-prometheus
 
+- block:
+  - name: get checksum list
+    set_fact:
+      __caddy_checksums: "{{ lookup('url', 'https://github.com/caddyserver/caddy/releases/download/v' + caddy_version + '/caddy_' + caddy_version + '_checksums.txt', wantlist=True) | list }}"
+    run_once: true
+
+  - name: get checksum for {{ go_arch }} architecture
+    set_fact:
+      __caddy_checksum: "{{ item.split(' ')[0] }}"
+    with_items: "{{ __caddy_checksums }}"
+    when:
+      - "('caddy_' + caddy_version + '_linux_' + go_arch + '.tar.gz') in item"
+  delegate_to: localhost
+
+- name: create caddy system group
+  group:
+    name: caddy
+    system: true
+    state: present
+
+- name: create caddy system user
+  user:
+    name: caddy
+    system: true
+    shell: "/usr/sbin/nologin"
+    group: caddy
+    createhome: true
+    home: /var/lib/caddy
+
+- name: download caddy binary to local folder
+  become: false
+  get_url:
+    url: "https://github.com/caddyserver/caddy/releases/download/v{{ caddy_version }}/caddy_{{ caddy_version }}_linux_{{ go_arch }}.tar.gz"
+    dest: "/tmp/caddy_{{ caddy_version }}_linux_{{ go_arch }}.tar.gz"
+    checksum: "sha512:{{ __caddy_checksum }}"
+  register: _download_archive
+  until: _download_archive is succeeded
+  retries: 5
+  delay: 2
+  delegate_to: localhost
+  check_mode: false
+
+- name: unpack caddy binary
+  become: false
+  unarchive:
+    src: "/tmp/caddy_{{ caddy_version }}_linux_{{ go_arch }}.tar.gz"
+    dest: "/tmp"
+    creates: "/tmp/caddy"
+  delegate_to: localhost
+  check_mode: false
+
+- name: propagate caddy binary
+  copy:
+    src: "/tmp/caddy"
+    dest: "{{ caddy_binary_install_dir }}/caddy"
+    mode: 0755
+    owner: root
+    group: root
+  notify:
+    - restart caddy
+
+- name: create systemd service unit
+  template:
+    src: "caddy.service.j2"
+    dest: /etc/systemd/system/caddy.service
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - reload caddy
+
+- name: ensure caddy service is started and enabled
+  become: true
+  systemd:
+    daemon_reload: true
+    name: caddy
+    state: started
+    enabled: true
+  
+- name: create caddy config path
+  file:
+    path: "{{ caddy_config_file_path }}"
+    state: directory
+    owner: caddy
+    group: caddy
+    mode: 0755
+
+- name: create caddy config file
+  template:
+    src: "Caddyfile.j2"
+    dest: "{{ caddy_config_file_path }}/{{ caddy_config_file_name }}"
+    owner: caddy
+    group: caddy
+    mode: 0644
+  notify:
+    - reload caddy

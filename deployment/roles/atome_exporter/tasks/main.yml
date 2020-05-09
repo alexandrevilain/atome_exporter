@@ -24,7 +24,7 @@
     home: /
   register: atome_exporter_user
 
-- name: copy binary to app home
+- name: propagate atome_exporter binary
   copy:
     src: ../build/atome_exporter
     dest: "/usr/local/bin"

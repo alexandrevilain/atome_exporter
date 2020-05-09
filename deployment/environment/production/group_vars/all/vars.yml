@@ -1,0 +1,32 @@
+# Prometheus:
+# See: https://github.com/cloudalchemy/ansible-prometheus/blob/master/defaults/main.yml
+prometheus_web_listen_address: localhost:9090
+prometheus_storage_retention: 60d
+prometheus_scrape_configs:
+  - job_name: prometheus
+    scrape_interval: 5s
+    static_configs:
+      - targets:
+        - localhost:9090
+  - job_name: atome_exporter
+    scrape_interval: 5s
+    static_configs:
+      - targets:
+        - localhost:8080
+
+# Grafana:
+# See: https://github.com/cloudalchemy/ansible-grafana/blob/master/defaults/main.yml
+grafana_security:
+  admin_user: "{{ vault_grafana_security_admin_user }}"
+  admin_password: "{{ vault_grafana_security_admin_password }}"
+grafana_datasources:
+  - name: prometheus
+    type: prometheus
+    access: proxy
+    url: 'http://{{ prometheus_web_listen_address }}'
+    basicAuth: false
+
+# Atome exporter
+atome_exporter_api:
+  user: "{{ vault_atome_exporter_api_user }}"
+  password: "{{ vault_atome_exporter_api_password }}"

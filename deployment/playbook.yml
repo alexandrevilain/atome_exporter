@@ -1,0 +1,6 @@
+---
+- hosts: all
+  roles:
+    - role: cloudalchemy.prometheus
+    - role: cloudalchemy.grafana
+    - role: atome_exporter

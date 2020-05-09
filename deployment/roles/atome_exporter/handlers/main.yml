@@ -1,0 +1,7 @@
+---
+- name: restart atome_exporter
+  become: true
+  systemd:
+    daemon_reload: true
+    name: atome_exporter
+    state: restarted

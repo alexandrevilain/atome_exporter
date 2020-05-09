@@ -1,0 +1,22 @@
+
+{{ ansible_managed | comment }}
+
+[Unit]
+Description=Atome statistics exporter
+After=network-online.target
+StartLimitInterval=0
+
+[Service]
+Type=simple
+User=atome_exporter
+Group=atome_exporter
+ExecStart=/usr/local/bin/atome_exporter
+SyslogIdentifier=atome_exporter
+Restart=always
+RestartSec=5s
+
+Environment=ATOME_EXPORTER_ATOME_USERNAME={{ atome_exporter_api.user }}
+Environment=ATOME_EXPORTER_ATOME_PASSWORD={{ atome_exporter_api.password }}
+
+[Install]
+WantedBy=multi-user.target

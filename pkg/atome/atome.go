@@ -19,6 +19,8 @@ const (
 	storageCookieKey         = "cookie"
 	storageUserIDKey         = "user_id"
 	storageSubscriptionIDKey = "subscription_id"
+
+	maxRetry = 3
 )
 
 // A Client is an Atome client API
@@ -106,7 +108,7 @@ func (c *Client) Authenticate() error {
 }
 
 // RetriveDayConsumption returns the current consumption
-func (c *Client) RetriveDayConsumption() (*Consumption, error) {
+func (c *Client) RetriveDayConsumption(retry int) (*Consumption, error) {
 
 	url := fmt.Sprintf("%s/api/subscription/%d/%s/consumption.json?period=sod", baseURL, c.user.ID, c.user.Subscriptions[0].Reference)
 
@@ -135,8 +137,11 @@ func (c *Client) RetriveDayConsumption() (*Consumption, error) {
 	}
 
 	if resp.StatusCode == 403 {
-		c.Authenticate()
-		return c.RetriveDayConsumption()
+		if retry <= maxRetry {
+			c.Authenticate()
+			return c.RetriveDayConsumption(retry + 1)
+		}
+		return nil, errors.New("unable to get data: authentication error")
 	}
 
 	if resp.StatusCode != 200 {

@@ -61,7 +61,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.logger.Infoln("Collecting metrics")
 
-	consumption, err := e.atome.RetriveDayConsumption()
+	consumption, err := e.atome.RetriveDayConsumption(0)
 	if err != nil {
 		log.Error(err)
 		ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0)

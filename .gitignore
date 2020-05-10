@@ -5,3 +5,4 @@ build
 /atome_exporter
 vault.yml
 hosts
+dist

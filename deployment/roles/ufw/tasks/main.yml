@@ -1,0 +1,36 @@
+---
+- name: unstall ufw
+  apt: 
+    package: ufw 
+    state: present
+
+- name: set ufw defaults
+  ufw: 
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  with_items:
+    - { direction: 'incoming', policy: 'deny' }
+    - { direction: 'outgoing', policy: 'allow' }
+  notify:
+    - restart ufw
+
+- name: configure ufw rules
+  ufw: 
+    rule: "{{ item.rule }}"
+    port: "{{ item.port }} "
+    proto: "{{ item.proto }}"
+  with_items:
+    - { rule: 'limit', port: 'ssh', proto: 'tcp' }
+    - { rule: 'allow', port: 'https', proto: 'tcp'  }
+  notify:
+    - restart ufw
+
+- name: set logging
+  ufw:
+    logging: 'on'
+  notify:
+    - restart ufw
+
+- name: enable ufw
+  ufw: 
+    state: enabled

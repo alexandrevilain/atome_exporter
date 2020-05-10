@@ -4,3 +4,5 @@
     - role: cloudalchemy.prometheus
     - role: cloudalchemy.grafana
     - role: atome_exporter
+    - role: caddy
+    - role: ufw

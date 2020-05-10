@@ -30,3 +30,8 @@ grafana_datasources:
 atome_exporter_api:
   user: "{{ vault_atome_exporter_api_user }}"
   password: "{{ vault_atome_exporter_api_password }}"
+
+# Caddy
+caddy_config: |
+  {{ vault_grafana_domain_name }}
+  reverse_proxy localhost:3000

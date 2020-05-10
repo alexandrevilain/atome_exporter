@@ -38,7 +38,7 @@ EOF
 Then, create your vault file:
 
 ```bash
-ansible-vault create ./deployment/environment/production/group_vars/all/vault2.yml --ask-vault-pass
+ansible-vault create ./deployment/environment/production/group_vars/all/vault.yml --ask-vault-pass
 ```
 
 Define your vault password then, put the following vars:
